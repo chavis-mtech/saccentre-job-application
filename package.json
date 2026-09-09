@@ -1,0 +1,17 @@
+{
+  "name": "saccentre-student-management",
+  "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "packageManager": "pnpm@11.0.9",
+  "scripts": {
+    "build": "pnpm --dir backend build && pnpm --dir client-app build",
+    "db:down": "docker compose down",
+    "db:up": "docker compose up -d postgres",
+    "format": "pnpm --dir backend format && pnpm --dir client-app format",
+    "lint": "pnpm --dir backend lint && pnpm --dir client-app lint",
+    "setup": "pnpm --dir backend install && pnpm --dir client-app install",
+    "test": "pnpm --dir backend test && pnpm --dir client-app test"
+  }
+}
