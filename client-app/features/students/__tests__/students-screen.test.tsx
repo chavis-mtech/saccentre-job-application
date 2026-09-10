@@ -14,6 +14,9 @@ describe("StudentsScreen", () => {
   beforeEach(() => {
     vi.spyOn(StudentsApi.prototype, "list").mockResolvedValue(emptyPage);
     vi.spyOn(StudentsApi.prototype, "create").mockResolvedValue(student());
+    vi.spyOn(StudentsApi.prototype, "createMany").mockResolvedValue([
+      student(),
+    ]);
     vi.spyOn(StudentsApi.prototype, "update").mockResolvedValue(student());
     vi.spyOn(StudentsApi.prototype, "remove").mockResolvedValue();
   });
@@ -89,12 +92,14 @@ describe("StudentsScreen", () => {
     await user.click(screen.getByRole("button", { name: "บันทึกข้อมูล" }));
 
     await waitFor(() =>
-      expect(StudentsApi.prototype.create).toHaveBeenCalledWith({
-        birthDate: "2005-05-20",
-        firstName: "สมชาย",
-        lastName: "ใจดี",
-        nickname: "ชาย",
-      }),
+      expect(StudentsApi.prototype.createMany).toHaveBeenCalledWith([
+        {
+          birthDate: "2005-05-20",
+          firstName: "สมชาย",
+          lastName: "ใจดี",
+          nickname: "ชาย",
+        },
+      ]),
     );
     expect(screen.getByRole("status")).toHaveTextContent("เพิ่มข้อมูลสำเร็จ");
     expect(StudentsApi.prototype.list).toHaveBeenCalledTimes(2);

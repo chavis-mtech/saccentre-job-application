@@ -18,6 +18,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateStudentDto } from './dto/create-student.dto.js';
+import { CreateStudentsDto } from './dto/create-students.dto.js';
 import { ListStudentsQueryDto } from './dto/list-students-query.dto.js';
 import { UpdateStudentDto } from './dto/update-student.dto.js';
 import { StudentsService } from './students.service.js';
@@ -31,6 +32,12 @@ export class StudentsController {
   @ApiCreatedResponse()
   create(@Body() input: CreateStudentDto) {
     return this.studentsService.create(input);
+  }
+
+  @Post('bulk')
+  @ApiCreatedResponse()
+  createMany(@Body() input: CreateStudentsDto) {
+    return this.studentsService.createMany(input.students);
   }
 
   @Get()

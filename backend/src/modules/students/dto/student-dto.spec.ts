@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateStudentDto } from './create-student.dto.js';
+import { CreateStudentsDto } from './create-students.dto.js';
 import {
   ListStudentsQueryDto,
   SortOrder,
@@ -78,15 +79,6 @@ describe('CreateStudentDto', () => {
       ).not.toHaveLength(0);
     },
   );
-
-  it('rejects a birth date in the future', async () => {
-    expect(
-      await errorsFor(CreateStudentDto, {
-        ...validInput,
-        birthDate: '2999-01-01',
-      }),
-    ).not.toHaveLength(0);
-  });
 });
 
 describe('UpdateStudentDto', () => {
@@ -97,6 +89,35 @@ describe('UpdateStudentDto', () => {
   it('validates fields that are provided', async () => {
     expect(
       await errorsFor(UpdateStudentDto, { nickname: 'ก'.repeat(51) }),
+    ).not.toHaveLength(0);
+  });
+});
+
+describe('CreateStudentsDto', () => {
+  const student = {
+    birthDate: '2005-05-20',
+    firstName: 'สมชาย',
+    lastName: 'ใจดี',
+    nickname: 'ชาย',
+  };
+
+  it('accepts multiple valid rows', async () => {
+    expect(
+      await errorsFor(CreateStudentsDto, { students: [student, student] }),
+    ).toHaveLength(0);
+  });
+
+  it('rejects an empty list', async () => {
+    expect(
+      await errorsFor(CreateStudentsDto, { students: [] }),
+    ).not.toHaveLength(0);
+  });
+
+  it('validates every row', async () => {
+    expect(
+      await errorsFor(CreateStudentsDto, {
+        students: [student, { ...student, firstName: '' }],
+      }),
     ).not.toHaveLength(0);
   });
 });

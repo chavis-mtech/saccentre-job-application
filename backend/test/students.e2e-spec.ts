@@ -124,6 +124,32 @@ describe('Students API (e2e)', () => {
     });
   });
 
+  describe('POST /api/v1/students/bulk', () => {
+    it('creates multiple students in one request', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/students/bulk')
+        .send({
+          students: [
+            validStudent,
+            { ...validStudent, firstName: 'สุดา', nickname: 'ดา' },
+          ],
+        })
+        .expect(201);
+
+      expect(response.body).toHaveLength(2);
+      expect(repository.snapshot()).toHaveLength(2);
+    });
+
+    it('rejects the whole request when one row is invalid', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/students/bulk')
+        .send({ students: [validStudent, { ...validStudent, firstName: '' }] })
+        .expect(400);
+
+      expect(repository.snapshot()).toHaveLength(0);
+    });
+  });
+
   describe('GET /api/v1/students', () => {
     it('returns an empty first page', async () => {
       const response = await request(app.getHttpServer())

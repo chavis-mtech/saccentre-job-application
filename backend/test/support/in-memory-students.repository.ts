@@ -39,6 +39,10 @@ export class InMemoryStudentsRepository implements StudentsRepository {
     return this.seed(data);
   }
 
+  async createMany(data: CreateStudentData[]): Promise<StudentRecord[]> {
+    return data.map((item) => this.seed(item));
+  }
+
   async delete(id: string): Promise<boolean> {
     const index = this.records.findIndex((record) => record.id === id);
     if (index === -1) return false;

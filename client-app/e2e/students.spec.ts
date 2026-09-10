@@ -18,6 +18,25 @@ async function mockStudentsApi(page: Page, initial: Student[] = []) {
     const url = new URL(request.url());
     const id = url.pathname.match(/\/students\/([^/]+)$/)?.[1];
 
+    if (request.method() === "POST" && id === "bulk") {
+      const inputs = request.postDataJSON().students;
+      const now = new Date().toISOString();
+      const created = inputs.map(
+        (
+          input: Omit<Student, "createdAt" | "id" | "updatedAt">,
+          index: number,
+        ) => ({
+          ...input,
+          createdAt: now,
+          id: `33333333-3333-4333-8333-${String(index + 1).padStart(12, "0")}`,
+          updatedAt: now,
+        }),
+      );
+      students.push(...created);
+      await route.fulfill({ json: created, status: 201 });
+      return;
+    }
+
     if (request.method() === "GET" && !id) {
       const search = url.searchParams.get("search")?.toLocaleLowerCase("th");
       const data = search
@@ -98,10 +117,10 @@ const existingStudent: Student = {
 
 test("shows a usable empty student page", async ({ page }) => {
   await mockStudentsApi(page);
-  await page.goto("/students");
+  await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "ข้อมูลนักเรียน" }),
+    page.getByRole("heading", { name: "จัดการนักเรียน" }),
   ).toBeVisible();
   await expect(page.getByText("ยังไม่มีข้อมูลนักเรียน")).toBeVisible();
   await expect(
@@ -111,7 +130,7 @@ test("shows a usable empty student page", async ({ page }) => {
 
 test("creates and displays a Thai student", async ({ page }) => {
   await mockStudentsApi(page);
-  await page.goto("/students");
+  await page.goto("/");
 
   await page.getByRole("button", { name: "เพิ่มนักเรียน" }).click();
   await page.getByLabel("ชื่อ", { exact: true }).fill("สมชาย");
@@ -124,11 +143,55 @@ test("creates and displays a Thai student", async ({ page }) => {
   await expect(page.getByRole("row", { name: /สมชาย ใจดี ชาย/ })).toBeVisible();
 });
 
+test("creates multiple students in one request", async ({ page }) => {
+  const students = await mockStudentsApi(page);
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "เพิ่มนักเรียน" }).click();
+  await page.getByRole("button", { name: /เพิ่มแถว/ }).click();
+
+  const names = page.getByLabel("ชื่อ", { exact: true });
+  const lastNames = page.getByLabel("นามสกุล");
+  const nicknames = page.getByLabel("ชื่อเล่น");
+  const birthDates = page.getByLabel("วันเกิด");
+  await names.nth(0).fill("สมชาย");
+  await lastNames.nth(0).fill("ใจดี");
+  await nicknames.nth(0).fill("ชาย");
+  await birthDates.nth(0).fill("2005-05-20");
+  await names.nth(1).fill("สุดา");
+  await lastNames.nth(1).fill("ดีใจ");
+  await nicknames.nth(1).fill("ดา");
+  await birthDates.nth(1).fill("2006-06-21");
+  await page.getByRole("button", { name: "บันทึกข้อมูล" }).click();
+
+  await expect(page.getByText("เพิ่มข้อมูลสำเร็จ 2 รายการ")).toBeVisible();
+  await expect(page.getByText("สมชาย")).toBeVisible();
+  await expect(page.getByText("สุดา")).toBeVisible();
+  expect(students).toHaveLength(2);
+});
+
+test("keeps bulk input columns from overlapping", async ({ page }) => {
+  await mockStudentsApi(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "เพิ่มนักเรียน" }).click();
+
+  const row = page.getByRole("group", { name: "แถวที่ 1" });
+  const nicknameBox = await row.getByLabel("ชื่อเล่น").boundingBox();
+  const birthDateBox = await row.getByLabel("วันเกิด").boundingBox();
+
+  expect(nicknameBox).not.toBeNull();
+  expect(birthDateBox).not.toBeNull();
+  expect(
+    nicknameBox!.x + nicknameBox!.width <= birthDateBox!.x ||
+      nicknameBox!.y + nicknameBox!.height <= birthDateBox!.y,
+  ).toBe(true);
+});
+
 test("validates whitespace and future dates before calling the API", async ({
   page,
 }) => {
   const students = await mockStudentsApi(page);
-  await page.goto("/students");
+  await page.goto("/");
   await page.getByRole("button", { name: "เพิ่มนักเรียน" }).click();
 
   await page.getByLabel("ชื่อ", { exact: true }).fill("   ");
@@ -137,13 +200,13 @@ test("validates whitespace and future dates before calling the API", async ({
   await page.getByLabel("วันเกิด").fill("2999-01-01");
   await page.getByRole("button", { name: "บันทึกข้อมูล" }).click();
 
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByText("กรุณาตรวจสอบข้อมูลแถวที่ 1")).toBeVisible();
   expect(students).toHaveLength(0);
 });
 
 test("edits only the selected student", async ({ page }) => {
   await mockStudentsApi(page, [existingStudent]);
-  await page.goto("/students");
+  await page.goto("/");
 
   await page.getByRole("button", { name: "แก้ไข สมชาย ใจดี" }).click();
   await page.getByLabel("ชื่อเล่น").fill("ใหม่");
@@ -157,7 +220,7 @@ test("edits only the selected student", async ({ page }) => {
 
 test("does not delete until the user confirms", async ({ page }) => {
   await mockStudentsApi(page, [existingStudent]);
-  await page.goto("/students");
+  await page.goto("/");
 
   await page.getByRole("button", { name: "ลบ สมชาย ใจดี" }).click();
   await expect(
@@ -176,7 +239,7 @@ test("searches Thai names and preserves an actionable empty result", async ({
   page,
 }) => {
   await mockStudentsApi(page, [existingStudent]);
-  await page.goto("/students");
+  await page.goto("/");
 
   await page.getByRole("searchbox", { name: "ค้นหานักเรียน" }).fill("ไม่พบ");
   await page.getByRole("button", { name: "ค้นหา" }).click();

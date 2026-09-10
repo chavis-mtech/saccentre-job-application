@@ -30,6 +30,7 @@ export interface FindStudentsQuery {
 
 export interface StudentsRepository {
   create(data: CreateStudentData): Promise<StudentRecord>;
+  createMany(data: CreateStudentData[]): Promise<StudentRecord[]>;
   delete(id: string): Promise<boolean>;
   findById(id: string): Promise<StudentRecord | null>;
   findMany(

@@ -82,6 +82,27 @@ describe("StudentsApi", () => {
     });
   });
 
+  it("creates multiple students in one request", async () => {
+    const input = {
+      birthDate: "2005-05-20",
+      firstName: "สมชาย",
+      lastName: "ใจดี",
+      nickname: "ชาย",
+    };
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse([student()], 201));
+
+    await new StudentsApi(baseUrl, fetcher).createMany([input]);
+
+    expect(fetcher).toHaveBeenCalledWith(`${baseUrl}/students/bulk`, {
+      body: JSON.stringify({ students: [input] }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    });
+  });
+
   it("patches only supplied student fields", async () => {
     const fetcher = vi
       .fn()

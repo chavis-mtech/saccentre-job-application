@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SortOrder, StudentSortField } from './dto/list-students-query.dto.js';
 import type { StudentsRepository } from './students.repository.js';
 import { StudentsService } from './students.service.js';
@@ -16,6 +16,7 @@ describe('StudentsService', () => {
   beforeEach(() => {
     repository = {
       create: vi.fn(),
+      createMany: vi.fn(),
       delete: vi.fn(),
       findById: vi.fn(),
       findMany: vi.fn(),
@@ -62,6 +63,59 @@ describe('StudentsService', () => {
         nickname: 'ชาย',
         updatedAt: '2026-09-10T01:00:00.000Z',
       });
+    });
+
+    it('rejects a birth date in the future', async () => {
+      await expect(
+        service.create({
+          birthDate: '2999-01-01',
+          firstName: 'สมชาย',
+          lastName: 'ใจดี',
+          nickname: 'ชาย',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createMany', () => {
+    it('normalizes and creates every student in one repository call', async () => {
+      repository.createMany.mockResolvedValue([
+        studentRecord(),
+        studentRecord({ firstName: 'สุดา' }),
+      ]);
+
+      await service.createMany([
+        {
+          birthDate: '2005-05-20',
+          firstName: ' สมชาย ',
+          lastName: ' ใจดี ',
+          nickname: ' ชาย ',
+        },
+        {
+          birthDate: '2006-06-21',
+          firstName: ' สุดา ',
+          lastName: ' ดีใจ ',
+          nickname: ' ดา ',
+        },
+      ]);
+
+      expect(repository.createMany).toHaveBeenCalledOnce();
+      expect(repository.createMany).toHaveBeenCalledWith([
+        {
+          birthDate: new Date('2005-05-20T00:00:00.000Z'),
+          firstName: 'สมชาย',
+          lastName: 'ใจดี',
+          nickname: 'ชาย',
+        },
+        {
+          birthDate: new Date('2006-06-21T00:00:00.000Z'),
+          firstName: 'สุดา',
+          lastName: 'ดีใจ',
+          nickname: 'ดา',
+        },
+      ]);
     });
   });
 

@@ -47,6 +47,16 @@ describe.runIf(runDatabaseTests)(
       await expect(prisma.student.count()).resolves.toBe(1);
     });
 
+    it('creates multiple students and returns every row', async () => {
+      const students = await repository.createMany([
+        input,
+        { ...input, firstName: 'สุดา', nickname: 'ดา' },
+      ]);
+
+      expect(students).toHaveLength(2);
+      await expect(prisma.student.count()).resolves.toBe(2);
+    });
+
     it('stores birthDate as a PostgreSQL date without timezone drift', async () => {
       const student = await repository.create(input);
       const rows = await prisma.$queryRaw<Array<{ birth_date: string }>>`

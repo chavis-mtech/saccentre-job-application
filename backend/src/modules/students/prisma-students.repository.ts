@@ -1,4 +1,4 @@
-import { Injectable, NotImplementedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import type { StudentRecord } from './domain/student.js';
 import type {
@@ -12,25 +12,66 @@ import type {
 export class PrismaStudentsRepository implements StudentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(_data: CreateStudentData): Promise<StudentRecord> {
-    throw new NotImplementedException('TODO: implement student creation');
+  create(data: CreateStudentData): Promise<StudentRecord> {
+    return this.prisma.student.create({ data });
   }
 
-  delete(_id: string): Promise<boolean> {
-    throw new NotImplementedException('TODO: implement student deletion');
+  createMany(data: CreateStudentData[]): Promise<StudentRecord[]> {
+    return this.prisma.student.createManyAndReturn({ data });
   }
 
-  findById(_id: string): Promise<StudentRecord | null> {
-    throw new NotImplementedException('TODO: implement student lookup');
+  async delete(id: string): Promise<boolean> {
+    const result = await this.prisma.student.deleteMany({ where: { id } });
+    return result.count > 0;
   }
 
-  findMany(
-    _query: FindStudentsQuery,
+  findById(id: string): Promise<StudentRecord | null> {
+    return this.prisma.student.findUnique({ where: { id } });
+  }
+
+  async findMany(
+    query: FindStudentsQuery,
   ): Promise<{ items: StudentRecord[]; total: number }> {
-    throw new NotImplementedException('TODO: implement student listing');
+    const where = query.search
+      ? {
+          OR: [
+            {
+              firstName: {
+                contains: query.search,
+                mode: 'insensitive' as const,
+              },
+            },
+            {
+              lastName: {
+                contains: query.search,
+                mode: 'insensitive' as const,
+              },
+            },
+            {
+              nickname: {
+                contains: query.search,
+                mode: 'insensitive' as const,
+              },
+            },
+          ],
+        }
+      : {};
+    const items = await this.prisma.student.findMany({
+      orderBy: [{ [query.sort]: query.order }, { id: 'asc' }],
+      skip: (query.page - 1) * query.limit,
+      take: query.limit,
+      where,
+    });
+    const total = await this.prisma.student.count({ where });
+    return { items, total };
   }
 
-  update(_id: string, _data: UpdateStudentData): Promise<StudentRecord | null> {
-    throw new NotImplementedException('TODO: implement student update');
+  async update(
+    id: string,
+    data: UpdateStudentData,
+  ): Promise<StudentRecord | null> {
+    const student = await this.prisma.student.findUnique({ where: { id } });
+    if (!student) return null;
+    return this.prisma.student.update({ data, where: { id } });
   }
 }
